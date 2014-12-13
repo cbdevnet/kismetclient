@@ -2,28 +2,34 @@
 
 int setup_protocols(char* line, PROCDATA* params);
 int print_line(char* line, PROCDATA* params);
+int print_ssid(char* line, PROCDATA* params);
+int print_time(char* line, PROCDATA* params);
 
-char* protocols[]={
-	"!0 ENABLE STATUS *\n",
-	"!0 ENABLE CLIENT *\n",
-	"!0 ENABLE SSID *\n"
-};
-
-HANDLER protocol_handlers[]={
-	{"*KISMET: ", setup_protocols},
-	{"*SSID: ", print_line},
-	{"", NULL}
+HANDLER handlers[]={
+	{NULL, "*KISMET: ", setup_protocols},
+	{NULL, "*TIME: ", print_time},
+	{"!0 ENABLE CLIENT *\n", "*CLIENT: ", NULL},
+	{"!0 ENABLE SSID *\n", "*SSID: ", print_ssid},
+	{"!0 ENABLE STATUS *\n", "*STATUS: ", NULL},
+	{NULL, "", print_line}
 };
 
 int resolve_handler(char* data, PROCDATA* procdata){
 	unsigned i;
-	for(i=0;i<sizeof(protocol_handlers)/sizeof(HANDLER);i++){
-		if(!strncmp(data, protocol_handlers[i].header, strlen(protocol_handlers[i].header))){
-			return protocol_handlers[i].handler(data, procdata);
+	for(i=0;i<sizeof(handlers)/sizeof(HANDLER);i++){
+		if(handlers[i].header){
+			if(!strncmp(data, handlers[i].header, strlen(handlers[i].header))){
+				if(handlers[i].handler){
+					return handlers[i].handler(data, procdata);
+				}
+				else{
+					return 0;
+				}
+			}
 		}
 	}
-	fprintf(stderr, "Unhandled line.\n");
-	return 0;
+	fprintf(stderr, "No handler found for line: %s\n", data);
+	return -1;
 }
 	
 int setup_protocols(char* line, PROCDATA* params){
@@ -31,23 +37,37 @@ int setup_protocols(char* line, PROCDATA* params){
 	
 	fprintf(stderr, "Enabling protocols\n");
 
-	for(i=0;i<sizeof(protocols)/sizeof(char*);i++){
-		send(params->fd, protocols[i], strlen(protocols[i]), 0);
+	for(i=0;i<sizeof(handlers)/sizeof(HANDLER);i++){
+		if(handlers[i].enable){
+			send(params->fd, handlers[i].enable, strlen(handlers[i].enable), 0);
+		}
 	}
+	return 0;
 }
 
 int print_line(char* data, PROCDATA* params){
 	printf("DATA %d: %s\n",strlen(data), data);
+	return 0;
+}
+
+int print_ssid(char* data, PROCDATA* params){
+	printf("Some SSID data\n");
+	return 0;
+}
+
+int print_time(char* data, PROCDATA* params){
+	printf("TIME %s\n",data+7);
+	return 0;
 }
 
 int main(int argc, char** argv){
 	int sock;
 	struct readline_r rr;
-	int error, bytes;
+	int error;
 	char* data;
 	PROCDATA procdata;
 
-	sock=sock_connect("129.13.215.25", 2501);
+	sock=sock_connect("127.0.0.1", 2501);
 	if(sock<0){
 		return 1;
 	}
@@ -68,10 +88,7 @@ int main(int argc, char** argv){
 				perror("sock_next");
 				break;
 			default:
-				if(resolve_handler(data, &procdata)<0){
-					fprintf(stderr, "Handler failed, aborting\n");
-					break;
-				}
+				resolve_handler(data, &procdata);
 		}
 	}while(error>0);
 

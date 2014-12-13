@@ -1,7 +1,7 @@
 .PHONY: clean
 
 LIBS=
-CFLAGS=-Wall
+CFLAGS=-Wall -g
 
 all: kismetcli
 

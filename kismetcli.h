@@ -10,6 +10,7 @@ typedef struct /*_PROCESSING_DATA*/ {
 typedef int (*PROTOCOL_HANDLER)(char* , PROCDATA*);
 
 typedef struct /*_PROTOCOL_HANDLER*/ {
+	char* enable;
 	char* header;
 	PROTOCOL_HANDLER handler;
 } HANDLER;
