@@ -46,7 +46,7 @@ int setup_protocols(char* line, PROCDATA* params){
 }
 
 int print_line(char* data, PROCDATA* params){
-	printf("DATA %d: %s\n",strlen(data), data);
+	printf("DATA %d: %s\n", (int)strlen(data), data);
 	return 0;
 }
 
